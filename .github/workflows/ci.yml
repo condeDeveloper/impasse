@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.so }}
+
+    # bash nos tres sistemas: no Windows o shell padrao e o PowerShell, e ele
+    # desmonta "-Dexec.args=..." em dois argumentos antes de o Maven ver.
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        so: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Testes
+        run: mvn -B -ntp verify
+
+      - name: nenhuma politica deixa chegar a um impasse
+        run: mvn -B -ntp -q exec:java -Dexec.args="correcao"
+
+      - name: o detector de ciclo contra a definicao
+        run: mvn -B -ntp -q exec:java -Dexec.args="deteccao"
+
+      - name: quanto cada prevencao custa em concorrencia
+        run: mvn -B -ntp -q exec:java -Dexec.args="custo"
+
+      - name: estado seguro nao e estado sem impasse
+        run: mvn -B -ntp -q exec:java -Dexec.args="seguranca"
+
+      - name: quebrar cada uma das quatro condicoes
+        run: mvn -B -ntp -q exec:java -Dexec.args="condicoes"
+
+      - name: Relatorios de teste
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports-${{ matrix.so }}
+          path: target/surefire-reports
